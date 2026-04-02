@@ -4,6 +4,7 @@ from app.auth import get_current_user_id
 from app.config import settings
 from openai import OpenAI
 import re
+import base64
 
 router = APIRouter(prefix="/chat", tags=["chatbot"])
 
@@ -538,7 +539,47 @@ async def analyze_image(
     """Analyze uploaded image for possible health issues."""
     filename = file.filename.lower()
     
-    # Simple rule-based logic based on filename
+    # Try OpenAI Vision API if configured
+    if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY != "your-openai-api-key-here":
+        try:
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            file_bytes = await file.read()
+            base64_image = base64.b64encode(file_bytes).decode('utf-8')
+            
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a medical assistant performing preliminary image analysis. Return exactly two lines. First line MUST start with 'Issue: ' followed by the possible issue. Second line MUST start with 'Test: ' followed by the suggested medical test to confidently deduce the issue."
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Analyze this image for any visible health issues."},
+                            {"type": "image_url", "image_url": {"url": f"data:{file.content_type};base64,{base64_image}"}}
+                        ]
+                    }
+                ],
+                max_tokens=200
+            )
+            
+            content = response.choices[0].message.content
+            issue, test = "Unclear visual symptoms.", "General physical examination."
+            for line in content.split("\n"):
+                if line.startswith("Issue: "):
+                    issue = line.replace("Issue: ", "").strip()
+                elif line.startswith("Test: "):
+                    test = line.replace("Test: ", "").strip()
+                    
+            return ImageAnalysisResponse(
+                possible_issue=issue,
+                suggested_medical_test=test
+            )
+        except Exception as e:
+            print(f"OpenAI Vision API Error: {str(e)}")
+            
+    # Fallback to simple rule-based logic based on filename
     if "skin" in filename or "rash" in filename or "red" in filename:
         return ImageAnalysisResponse(
             possible_issue="Possible dermatitis or allergic skin reaction.",
@@ -559,4 +600,5 @@ async def analyze_image(
             possible_issue="General irregularity detected.",
             suggested_medical_test="General physical examination and blood test."
         )
+
 

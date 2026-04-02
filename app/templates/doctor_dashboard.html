@@ -29,6 +29,12 @@
             </div>
         </div>
 
+        <!-- Unified Notifications -->
+        <div class="card" id="unified-notifications" style="display: none;">
+            <h2>🔔 Notifications</h2>
+            <div id="notifications-list"></div>
+        </div>
+
         <!-- Appointments Section -->
         <div class="card">
             <h2>📅 My Appointments</h2>
@@ -133,6 +139,39 @@
             if (!appointments || appointments.length === 0) {
                 appointmentsList.innerHTML = '<p class="text-muted">No appointments scheduled</p>';
                 return;
+            }
+
+            // Set up Notifications
+            let notifications = [];
+            const upcomingAppointments = appointments.filter(apt => apt.status === 'scheduled');
+
+            upcomingAppointments.forEach(apt => {
+                const aptDate = new Date(`${apt.date}T${apt.time}`);
+                const now = new Date();
+                const hoursDiff = (aptDate - now) / (1000 * 60 * 60);
+
+                if (hoursDiff > 0 && hoursDiff <= 24) {
+                    notifications.push({
+                        type: 'urgent',
+                        message: `⚠️ Urgent: You have an appointment within 24 hours (on ${formatDate(apt.date)} at ${formatTime(apt.time)}).`,
+                        priority: 1
+                    });
+                }
+            });
+
+            const notifList = document.getElementById('notifications-list');
+            const notifSection = document.getElementById('unified-notifications');
+
+            if (notifications.length > 0) {
+                notifSection.style.display = 'block';
+                notifications.sort((a, b) => a.priority - b.priority);
+                notifList.innerHTML = notifications.map(n =>
+                    `<div class="alert alert-${n.type === 'urgent' ? 'danger' : 'info'}" style="${n.type === 'urgent' ? 'color: #fff; background-color: var(--danger-color);' : ''}">
+                        ${n.message}
+                    </div>`
+                ).join('');
+            } else {
+                notifSection.style.display = 'none';
             }
 
             let appointmentsHtml = '<table class="appointments-table"><thead><tr>' +
