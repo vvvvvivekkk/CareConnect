@@ -182,7 +182,7 @@
                 const token = localStorage.getItem('token');
                 const response = await fetch('/api/chat/image-analysis', {
                     method: 'POST',
-                    headers: { 'Authorization': token },
+                    headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
                 });
 

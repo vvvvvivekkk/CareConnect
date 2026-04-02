@@ -538,6 +538,7 @@ async def analyze_image(
 ):
     """Analyze uploaded image for possible health issues."""
     filename = file.filename.lower()
+    fallback_prefix = ""
     
     # Try OpenAI Vision API if configured
     if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY != "your-openai-api-key-here":
@@ -577,12 +578,17 @@ async def analyze_image(
                 suggested_medical_test=test
             )
         except Exception as e:
-            print(f"OpenAI Vision API Error: {str(e)}")
+            error_msg = str(e)
+            print(f"OpenAI Vision API Error: {error_msg}")
+            if "quota" in error_msg.lower() or "429" in error_msg:
+                fallback_prefix = "⚠️ [AI Quota Exceeded] "
+            else:
+                fallback_prefix = "⚠️ [AI Error] "
             
     # Fallback to simple rule-based logic based on filename
     if "skin" in filename or "rash" in filename or "red" in filename:
         return ImageAnalysisResponse(
-            possible_issue="Possible dermatitis or allergic skin reaction.",
+            possible_issue=fallback_prefix + "Possible dermatitis or allergic skin reaction.",
             suggested_medical_test="Dermatology consultation and allergy patching test."
         )
     elif "eye" in filename or "pink" in filename:
@@ -592,12 +598,12 @@ async def analyze_image(
         )
     elif "throat" in filename or "tonsil" in filename:
         return ImageAnalysisResponse(
-            possible_issue="Possible strep throat or tonsillitis.",
+            possible_issue=fallback_prefix + "Possible strep throat or tonsillitis.",
             suggested_medical_test="Rapid strep test and throat culture."
         )
     else:
         return ImageAnalysisResponse(
-            possible_issue="General irregularity detected.",
+            possible_issue=fallback_prefix + "General irregularity detected. (Rename file to include keywords like 'skin', 'eye', or 'throat' for specific fallback)",
             suggested_medical_test="General physical examination and blood test."
         )
 
