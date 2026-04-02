@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from fastapi.responses import FileResponse
-from models import ReportResponse
-from auth import get_current_user_id
-from database import get_db
-from config import settings
+from app.models import ReportResponse
+from app.auth import get_current_user_id
+from app.database import get_db
+from app.config import settings
 import os
 import uuid
 from datetime import datetime

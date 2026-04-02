@@ -42,6 +42,19 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Backward-compatible migrations for existing databases.
+        cursor.execute("PRAGMA table_info(users)")
+        user_columns = {col[1] for col in cursor.fetchall()}
+
+        if "role" not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'patient'")
+        if "specialization" not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN specialization TEXT")
+        if "experience" not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN experience INTEGER")
+        if "profile_image" not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN profile_image TEXT")
         
         # Appointments table (updated for telemedicine)
         cursor.execute("""
@@ -58,6 +71,20 @@ def init_db():
                 FOREIGN KEY (doctor_id) REFERENCES users (id)
             )
         """)
+
+        # Backward-compatible migration from old appointment schema.
+        cursor.execute("PRAGMA table_info(appointments)")
+        appointment_columns = {col[1] for col in cursor.fetchall()}
+
+        if "patient_id" not in appointment_columns:
+            if "user_id" in appointment_columns:
+                cursor.execute("ALTER TABLE appointments ADD COLUMN patient_id INTEGER")
+                cursor.execute("UPDATE appointments SET patient_id = user_id WHERE patient_id IS NULL")
+            else:
+                cursor.execute("ALTER TABLE appointments ADD COLUMN patient_id INTEGER")
+
+        if "doctor_id" not in appointment_columns:
+            cursor.execute("ALTER TABLE appointments ADD COLUMN doctor_id INTEGER")
         
         # Treatment notes table (doctor adds notes after consultation)
         cursor.execute("""

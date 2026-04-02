@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doctor Dashboard - CareConnect</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
             <h1>🏥 CareConnect - Doctor Portal</h1>
             <div class="nav-links">
-                <a href="doctor_dashboard.html">Dashboard</a>
-                <a href="dashboard.html">Back to Patient View</a>
+                <a href="/doctor-dashboard">Dashboard</a>
+                <a href="/dashboard">Back to Patient View</a>
                 <div id="user-info"></div>
             </div>
         </div>
@@ -61,7 +61,7 @@
         </div>
     </div>
 
-    <script src="js/utils.js"></script>
+    <script src="/static/js/utils.js"></script>
     <script>
         requireAuth();
         initNavigation();
@@ -143,7 +143,7 @@
                 let patientName = 'Patient #' + apt.patient_id;
                 try {
                     // Try to get patient name (optional - may fail due to permissions)
-                    const patientResponse = await fetch(`http://localhost:8000/users/${apt.patient_id}`, {
+                    const patientResponse = await fetch(`/api/users/${apt.patient_id}`, {
                         method: 'GET',
                         headers: {
                             'Authorization': localStorage.getItem('token')

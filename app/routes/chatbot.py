@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from models import ChatMessage, ChatResponse
-from auth import get_current_user_id
-from config import settings
+from app.models import ChatMessage, ChatResponse
+from app.auth import get_current_user_id
+from app.config import settings
 from openai import OpenAI
 import re
 

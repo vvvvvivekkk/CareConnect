@@ -4,19 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointments - CareConnect</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
             <h1>🏥 CareConnect</h1>
             <div class="nav-links">
-                <a href="dashboard.html">Dashboard</a>
-                <a href="doctors.html">Find Doctors</a>
-                <a href="appointment.html">Appointments</a>
-                <a href="period.html">Period Tracker</a>
-                <a href="upload.html">Reports</a>
-                <a href="chatbot.html">Chatbot</a>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/doctors">Find Doctors</a>
+                <a href="/appointments">Appointments</a>
+                <a href="/period">Period Tracker</a>
+                <a href="/reports">Reports</a>
+                <a href="/chatbot">Chatbot</a>
                 <div id="user-info"></div>
             </div>
         </div>
@@ -29,7 +29,7 @@
         <div class="card">
             <h3>📋 Want to book a new appointment?</h3>
             <p class="text-muted">Browse our doctors and book an appointment</p>
-            <a href="doctors.html" class="btn btn-primary">Find Doctors</a>
+            <a href="/doctors" class="btn btn-primary">Find Doctors</a>
         </div>
         
         <!-- Appointments List -->
@@ -41,7 +41,7 @@
         </div>
     </div>
     
-    <script src="js/utils.js"></script>
+    <script src="/static/js/utils.js"></script>
     <script>
         requireAuth();
         initNavigation();
@@ -53,7 +53,7 @@
                 const appointmentsList = document.getElementById('appointments-list');
                 
                 if (appointments.length === 0) {
-                    appointmentsList.innerHTML = '<p class="text-muted">No appointments yet. <a href="doctors.html">Browse doctors</a> to book one.</p>';
+                    appointmentsList.innerHTML = '<p class="text-muted">No appointments yet. <a href="/doctors">Browse doctors</a> to book one.</p>';
                     return;
                 }
                 

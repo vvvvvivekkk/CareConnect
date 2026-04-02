@@ -1,4 +1,175 @@
-# 🏥 CareConnect - Healthcare Web Application
+# CareConnect
+
+CareConnect is a FastAPI-based healthcare web application for patients and doctors. It includes authentication, appointment booking, doctor dashboards, treatment notes, medical report uploads, a period tracker, health tips, and a chatbot for general wellness guidance.
+
+## Features
+
+- Patient registration, login, and profile lookup with JWT auth
+- Doctor registration and doctor directory pages
+- Appointment booking with automatic Jitsi Meet links
+- Doctor dashboard with appointments and treatment notes
+- Medical report upload, download, and deletion
+- Period tracking with next-cycle predictions
+- Rule-based health tips based on age and environmental factors
+- Chatbot endpoint with OpenAI support and fallback responses when no API key is configured
+- HTML pages served by FastAPI with static CSS and JavaScript assets
+
+## Tech Stack
+
+- Backend: FastAPI, SQLite, SQLAlchemy, Pydantic, JWT, bcrypt
+- Frontend: Jinja2 templates, HTML, CSS, vanilla JavaScript
+- Integrations: OpenAI, Jitsi Meet
+
+## Project Layout
+
+```text
+CareConnect/
+├── run.py               # Main entry point
+├── app/
+│   ├── main.py          # FastAPI application
+│   ├── config.py        # Settings and environment variables
+│   ├── database.py      # SQLite setup and migrations
+│   ├── models.py        # Pydantic request/response models
+│   ├── auth.py          # Password hashing and JWT helpers
+│   ├── routes/          # API and page routes
+│   ├── static/          # CSS, JS, and images
+│   ├── templates/       # HTML pages
+│   └── uploads/         # Uploaded report files
+├── requirements.txt
+└── README.md
+```
+
+## Local Setup
+
+### Prerequisites
+
+- Python 3.8 or newer
+- pip
+
+### Install Dependencies
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Configure Environment Variables
+
+Create a `.env` file in the project root if you want to override defaults:
+
+```env
+SECRET_KEY=replace-this-in-production
+OPENAI_API_KEY=your-openai-api-key
+```
+
+`OPENAI_API_KEY` is optional. If it is not set, the chatbot returns fallback responses.
+
+### Run the App
+
+```bash
+python run.py
+```
+
+The app runs at:
+
+- Web app: http://localhost:8000
+- API docs: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+You can also start it directly with uvicorn:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+## Main Pages
+
+- `/` or `/login` - Login page
+- `/register` - Registration page
+- `/dashboard` - Patient dashboard
+- `/appointments` - Appointment management
+- `/doctors` - Doctor directory
+- `/doctor-dashboard` - Doctor dashboard
+- `/chatbot` - Chatbot UI
+- `/period` - Period tracker
+- `/reports` or `/upload` - Medical reports page
+
+## API Endpoints
+
+All API routes are mounted under `/api`.
+
+### Authentication
+
+- `POST /api/users/register`
+- `POST /api/users/doctor/register`
+- `POST /api/users/login`
+- `GET /api/users/me`
+
+### Doctors
+
+- `GET /api/doctors`
+- `GET /api/doctors/{doctor_id}`
+- `GET /api/doctors/me/appointments`
+- `POST /api/doctors/appointments/{appointment_id}/notes`
+- `GET /api/doctors/appointments/{appointment_id}/notes`
+
+### Appointments
+
+- `POST /api/appointments`
+- `GET /api/appointments`
+- `GET /api/appointments/{appointment_id}`
+- `DELETE /api/appointments/{appointment_id}`
+
+### Chatbot
+
+- `POST /api/chat`
+
+### Reports
+
+- `POST /api/reports/upload`
+- `GET /api/reports`
+- `GET /api/reports/{report_id}/download`
+- `DELETE /api/reports/{report_id}`
+
+### Period Tracker
+
+- `POST /api/period`
+- `GET /api/period`
+- `PUT /api/period/cycle-length`
+
+### Health Tips
+
+- `POST /api/health-tips`
+- `GET /api/health-tips`
+
+### Health Check
+
+- `GET /api/health`
+
+## Database
+
+The application uses SQLite and creates `app/careconnect.db` automatically on startup.
+
+Tables include:
+
+- `users`
+- `appointments`
+- `treatment_notes`
+- `reports`
+- `period_tracker`
+
+## Notes
+
+- Uploaded reports are stored in `app/uploads/`.
+- Appointment links use Jitsi Meet room URLs.
+- The chatbot falls back to predefined guidance if OpenAI is unavailable or not configured.
+
+## Troubleshooting
+
+- If the server does not start, confirm that Python 3.8+ is installed and port 8000 is free.
+- If login fails, delete any stale `careconnect.db` file only if you want to reset local data.
+- If file uploads fail, check the file type and size limit of 10 MB.# 🏥 CareConnect - Healthcare Web Application
 
 A complete, beginner-friendly healthcare web application with real working features including user authentication, appointment booking, video consultations, AI chatbot, period tracking, and medical report management.
 
@@ -133,10 +304,18 @@ cd frontend
 python -m http.server 8080
 ```
 
+If port 8080 is already in use on your machine, run:
+
+```bash
+python -m http.server 8081
+```
+
 Open in browser:
 - Frontend: http://localhost:8080
 - Backend API: http://localhost:8000
 - Swagger docs: http://localhost:8000/docs
+
+If you started frontend on 8081, use: http://localhost:8081
 
 ## 🔌 Ports To Open
 
@@ -144,6 +323,7 @@ For local development, make sure these ports are allowed in firewall/security se
 
 - `8000` (Backend FastAPI server)
 - `8080` (Frontend static server)
+- `8081` (Alternative frontend port if 8080 is occupied)
 
 Optional/External service ports:
 - `443` outbound (HTTPS for OpenAI API and Jitsi Meet)

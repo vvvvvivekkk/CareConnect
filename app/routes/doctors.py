@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from models import DoctorResponse, TreatmentNotesCreate, TreatmentNotesResponse, AppointmentResponse
-from auth import get_current_user_id
-from database import get_db
+from app.models import DoctorResponse, TreatmentNotesCreate, TreatmentNotesResponse, AppointmentResponse
+from app.auth import get_current_user_id
+from app.database import get_db
 
 router = APIRouter(prefix="/doctors", tags=["doctors"])
 

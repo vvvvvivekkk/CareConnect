@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from models import UserCreate, UserLogin, UserResponse, Token, DoctorRegister
-from auth import hash_password, verify_password, create_access_token, get_current_user_id
-from database import get_db
+from app.models import UserCreate, UserLogin, UserResponse, Token, DoctorRegister
+from app.auth import hash_password, verify_password, create_access_token, get_current_user_id
+from app.database import get_db
 
 router = APIRouter(prefix="/users", tags=["users"])
 

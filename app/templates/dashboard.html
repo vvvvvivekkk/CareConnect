@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - CareConnect</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
             <h1>🏥 CareConnect</h1>
             <div class="nav-links">
-                <a href="dashboard.html">Dashboard</a>
-                <a href="appointment.html">Appointments</a>
-                <a href="period.html">Period Tracker</a>
-                <a href="upload.html">Reports</a>
-                <a href="chatbot.html">Chatbot</a>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/appointments">Appointments</a>
+                <a href="/period">Period Tracker</a>
+                <a href="/reports">Reports</a>
+                <a href="/chatbot">Chatbot</a>
                 <div id="user-info"></div>
             </div>
         </div>
@@ -67,7 +67,7 @@
         </div>
     </div>
     
-    <script src="js/utils.js"></script>
+    <script src="/static/js/utils.js"></script>
     <script>
         // Require authentication
         requireAuth();
@@ -80,7 +80,7 @@
         if (user.role === 'doctor') {
             const navLinks = document.querySelector('.nav-links');
             const doctorLink = document.createElement('a');
-            doctorLink.href = 'doctor_dashboard.html';
+            doctorLink.href = '/doctor-dashboard';
             doctorLink.textContent = '👨‍⚕️ Doctor Portal';
             navLinks.insertBefore(doctorLink, navLinks.querySelector('#user-info'));
         }
@@ -139,7 +139,7 @@
                     
                     if (upcomingAppointments.length > 3) {
                         appointmentsList.innerHTML += `<p class="text-center mt-2">
-                            <a href="appointment.html">View all ${upcomingAppointments.length} appointments</a>
+                            <a href="/appointments">View all ${upcomingAppointments.length} appointments</a>
                         </p>`;
                     }
                 }

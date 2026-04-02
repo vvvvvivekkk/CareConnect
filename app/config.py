@@ -1,10 +1,11 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, Union
+from pathlib import Path
 
 class Settings(BaseSettings):
     # Application
     APP_NAME: str = "CareConnect"
-    DEBUG: Optional[bool] = True
+    DEBUG: Union[bool, str] = True
     
     # Database
     DATABASE_URL: str = "sqlite:///./careconnect.db"
@@ -17,11 +18,12 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = "your-openai-api-key-here"
     
-    # File Upload
-    UPLOAD_DIR: str = "./uploads"
+    # File Upload - use path relative to app directory
+    UPLOAD_DIR: str = str(Path(__file__).parent / "uploads")
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()

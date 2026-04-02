@@ -1,5 +1,5 @@
-// API Base URL
-const API_URL = 'http://localhost:8000';
+// API Base URL - use relative path for unified deployment
+const API_URL = '/api';
 
 // Get token from localStorage
 function getToken() {
@@ -32,7 +32,7 @@ function isAuthenticated() {
 // Redirect to login if not authenticated
 function requireAuth() {
     if (!isAuthenticated()) {
-        window.location.href = 'index.html';
+        window.location.href = '/login';
         return false;
     }
     return true;
@@ -41,7 +41,7 @@ function requireAuth() {
 // Logout
 function logout() {
     clearAuth();
-    window.location.href = 'index.html';
+    window.location.href = '/login';
 }
 
 // API Call Helper
@@ -71,7 +71,7 @@ async function apiCall(endpoint, options = {}) {
         // Handle 401 - redirect to login
         if (response.status === 401) {
             clearAuth();
-            window.location.href = 'index.html';
+            window.location.href = '/login';
             throw new Error('Unauthorized');
         }
         

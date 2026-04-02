@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from models import AppointmentCreate, AppointmentResponse
-from auth import get_current_user_id
-from database import get_db
+from app.models import AppointmentCreate, AppointmentResponse
+from app.auth import get_current_user_id
+from app.database import get_db
 import uuid
 from datetime import datetime
 

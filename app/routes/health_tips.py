@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
-from models import HealthTipsRequest, HealthTipsResponse
-from auth import get_current_user_id
+from app.models import HealthTipsRequest, HealthTipsResponse
+from app.auth import get_current_user_id
 
 router = APIRouter(prefix="/health-tips", tags=["health-tips"])
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - CareConnect</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <div class="auth-container">
@@ -96,16 +96,16 @@
             </form>
             
             <p class="text-center mt-3">
-                Already have an account? <a href="index.html">Login here</a>
+                Already have an account? <a href="/login">Login here</a>
             </p>
         </div>
     </div>
     
-    <script src="js/utils.js"></script>
+    <script src="/static/js/utils.js"></script>
     <script>
         // Redirect if already logged in
         if (isAuthenticated()) {
-            window.location.href = 'dashboard.html';
+            window.location.href = '/dashboard';
         }
         
         const patientForm = document.getElementById('patient-register-form');
@@ -163,7 +163,7 @@
                 saveAuth(data.access_token, data.user);
                 
                 // Redirect to dashboard
-                window.location.href = 'dashboard.html';
+                window.location.href = '/dashboard';
                 
             } catch (error) {
                 alert('Registration failed: ' + error.message);
@@ -212,7 +212,7 @@
                 saveAuth(data.access_token, data.user);
                 
                 // Redirect to doctor dashboard
-                window.location.href = 'doctor_dashboard.html';
+                window.location.href = '/doctor-dashboard';
                 
             } catch (error) {
                 alert('Registration failed: ' + error.message);
