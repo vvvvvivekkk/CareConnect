@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointments - CareConnect</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
     <nav class="navbar">
         <div class="container">
@@ -21,17 +23,17 @@
             </div>
         </div>
     </nav>
-    
+
     <div class="container">
         <h2>📅 Appointments</h2>
-        
+
         <!-- Quick Action -->
         <div class="card">
             <h3>📋 Want to book a new appointment?</h3>
             <p class="text-muted">Browse our doctors and book an appointment</p>
             <a href="/doctors" class="btn btn-primary">Find Doctors</a>
         </div>
-        
+
         <!-- Appointments List -->
         <div class="card">
             <h2>Your Appointments</h2>
@@ -40,23 +42,23 @@
             </div>
         </div>
     </div>
-    
+
     <script src="/static/js/utils.js"></script>
     <script>
         requireAuth();
         initNavigation();
-        
+
         // Cancel appointment
         async function loadAppointments() {
             try {
                 const appointments = await apiCall('/appointments');
                 const appointmentsList = document.getElementById('appointments-list');
-                
+
                 if (appointments.length === 0) {
                     appointmentsList.innerHTML = '<p class="text-muted">No appointments yet. <a href="/doctors">Browse doctors</a> to book one.</p>';
                     return;
                 }
-                
+
                 // Sort by date (newest first)
                 appointments.sort((a, b) => {
                     const dateA = new Date(a.date + ' ' + a.time);
@@ -66,7 +68,7 @@
 
                 // Get doctor info for each appointment
                 let appointmentsHtml = '<ul class="appointment-list">';
-                
+
                 for (const apt of appointments) {
                     let doctorName = 'Doctor #' + apt.doctor_id;
                     try {
@@ -76,10 +78,15 @@
                         console.error('Error getting doctor info:', e);
                     }
 
-                    const statusBadge = apt.status === 'scheduled' 
-                        ? '<span style="color: var(--success-color);">✓ Scheduled</span>'
-                        : '<span style="color: var(--danger-color);">✗ Cancelled</span>';
-                    
+                    let statusBadge;
+                    if (apt.status === 'scheduled') {
+                        statusBadge = '<span style="color: var(--success-color);">✓ Scheduled</span>';
+                    } else if (apt.status === 'completed') {
+                        statusBadge = '<span style="color: blue;">★ Completed</span>';
+                    } else {
+                        statusBadge = '<span style="color: var(--danger-color);">✗ Cancelled</span>';
+                    }
+
                     appointmentsHtml += `
                         <li class="appointment-item">
                             <div class="appointment-info">
@@ -109,38 +116,39 @@
                 }
                 appointmentsHtml += '</ul>';
                 appointmentsList.innerHTML = appointmentsHtml;
-                
+
             } catch (error) {
-                document.getElementById('appointments-list').innerHTML = 
+                document.getElementById('appointments-list').innerHTML =
                     '<p class="text-muted">Error loading appointments</p>';
                 console.error('Error loading appointments:', error);
             }
         }
-        
+
         // Cancel appointment
         async function cancelAppointment(appointmentId) {
             if (!confirm('Are you sure you want to cancel this appointment?')) {
                 return;
             }
-            
+
             try {
                 await apiCall(`/appointments/${appointmentId}`, {
                     method: 'DELETE'
                 });
-                
+
                 showAlert('Appointment cancelled successfully', 'success');
                 loadAppointments();
-                
+
             } catch (error) {
                 showAlert('Failed to cancel appointment: ' + error.message, 'danger');
             }
         }
-        
+
         // Make cancelAppointment available globally
         window.cancelAppointment = cancelAppointment;
-        
+
         // Load appointments on page load
         loadAppointments();
     </script>
 </body>
+
 </html>
