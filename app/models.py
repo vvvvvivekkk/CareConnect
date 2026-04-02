@@ -112,3 +112,25 @@ class HealthTipsRequest(BaseModel):
 
 class HealthTipsResponse(BaseModel):
     tips: list[str]
+
+# Medical Record Models
+class MedicalRecordCreate(BaseModel):
+    appointment_id: int
+    diagnosis: str
+    prescription: Optional[str] = None
+    notes: Optional[str] = None
+
+class MedicalRecordResponse(BaseModel):
+    id: int
+    appointment_id: int
+    patient_id: int
+    doctor_id: int
+    diagnosis: str
+    prescription: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: Optional[str] = None
+
+# Image Analysis Models
+class ImageAnalysisResponse(BaseModel):
+    possible_issue: str
+    suggested_medical_test: str

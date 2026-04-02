@@ -211,3 +211,62 @@ async def cancel_appointment(
             "UPDATE appointments SET status = ? WHERE id = ?",
             ("cancelled", appointment_id)
         )
+
+@router.put("/{appointment_id}/cancel", status_code=status.HTTP_200_OK)
+async def cancel_appointment_put(
+    appointment_id: int,
+    user_id: int = Depends(get_current_user_id)
+):
+    """Cancel an appointment (patient or doctor can cancel)"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        appointment_columns = get_appointments_columns(cursor)
+        
+        # Check if appointment exists and user is patient or doctor
+        if "user_id" in appointment_columns:
+            cursor.execute(
+                "SELECT id FROM appointments WHERE id = ? AND (patient_id = ? OR user_id = ? OR doctor_id = ?)",
+                (appointment_id, user_id, user_id, user_id)
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM appointments WHERE id = ? AND (patient_id = ? OR doctor_id = ?)",
+                (appointment_id, user_id, user_id)
+            )
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Appointment not found or you don't have permission"
+            )
+        
+        # Update status to cancelled
+        cursor.execute(
+            "UPDATE appointments SET status = ? WHERE id = ?",
+            ("cancelled", appointment_id)
+        )
+        return {"message": "Appointment cancelled successfully"}
+
+@router.put("/{appointment_id}/complete", status_code=status.HTTP_200_OK)
+async def complete_appointment(
+    appointment_id: int,
+    user_id: int = Depends(get_current_user_id)
+):
+    """Mark appointment as completed (doctor only)"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT id FROM appointments WHERE id = ? AND doctor_id = ?",
+            (appointment_id, user_id)
+        )
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Appointment not found or you don't have permission"
+            )
+        
+        cursor.execute(
+            "UPDATE appointments SET status = ? WHERE id = ?",
+            ("completed", appointment_id)
+        )
+        return {"message": "Appointment marked as completed"}

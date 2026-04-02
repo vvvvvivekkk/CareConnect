@@ -101,6 +101,23 @@ def init_db():
             )
         """)
         
+        # Medical records table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS medical_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                appointment_id INTEGER NOT NULL,
+                patient_id INTEGER NOT NULL,
+                doctor_id INTEGER NOT NULL,
+                diagnosis TEXT NOT NULL,
+                prescription TEXT,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (appointment_id) REFERENCES appointments (id),
+                FOREIGN KEY (patient_id) REFERENCES users (id),
+                FOREIGN KEY (doctor_id) REFERENCES users (id)
+            )
+        """)
+        
         # Reports table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS reports (

@@ -9,7 +9,7 @@ from app.database import init_db
 from app.config import settings
 
 # Import API routers
-from app.routes import users, appointments, chatbot, reports, period, health_tips, doctors
+from app.routes import users, appointments, chatbot, reports, period, health_tips, doctors, medical_records
 
 # Import page routes
 from app.routes.pages import router as pages_router
@@ -55,6 +55,7 @@ app.include_router(reports.router, prefix="/api")
 app.include_router(period.router, prefix="/api")
 app.include_router(health_tips.router, prefix="/api")
 app.include_router(doctors.router, prefix="/api")
+app.include_router(medical_records.router, prefix="/api")
 
 # Include page routes (HTML pages)
 app.include_router(pages_router)

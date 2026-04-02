@@ -45,18 +45,18 @@
             
             <form id="notes-form" onsubmit="submitTreatmentNotes(event)">
                 <div class="form-group">
-                    <label>Consultation Notes:</label>
-                    <textarea id="notes-text" class="form-control" placeholder="Describe the consultation..." required></textarea>
+                    <label>Diagnosis (required):</label>
+                    <textarea id="diagnosis" class="form-control" placeholder="Detailed diagnosis..." required></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Treatment Plan (optional):</label>
-                    <textarea id="treatment-plan" class="form-control" placeholder="Prescribe treatment steps..."></textarea>
+                    <label>Consultation Notes:</label>
+                    <textarea id="notes-text" class="form-control" placeholder="Describe the consultation..."></textarea>
                 </div>
                 <div class="form-group">
                     <label>Prescription (optional):</label>
                     <textarea id="prescription" class="form-control" placeholder="List medications..."></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary">Save Treatment Notes</button>
+                <button type="submit" class="btn btn-primary">Save Medical Record</button>
             </form>
         </div>
     </div>
@@ -164,14 +164,18 @@
                         <td>${apt.time}</td>
                         <td><span class="status-badge status-${apt.status}">${apt.status}</span></td>
                         <td>
-                            ${apt.meeting_link ? `
+                            ${apt.meeting_link && apt.status === 'scheduled' ? `
                                 <a class="btn btn-small btn-primary" href="${apt.meeting_link}" target="_blank" rel="noopener noreferrer">
                                     Join Call
                                 </a>
-                            ` : '<span class="text-muted">No meeting link</span>'}
-                            <button class="btn btn-small btn-success" onclick="openNotesModal(${apt.id}, '${patientName}')">
-                                Add Notes
-                            </button>
+                            ` : ''}
+                            ${apt.status === 'scheduled' ? `
+                                <button class="btn btn-small btn-danger" onclick="cancelAppointment(${apt.id})">Cancel</button>
+                                <button class="btn btn-small btn-success" onclick="completeAppointment(${apt.id})">Complete</button>
+                                <button class="btn btn-small btn-info" onclick="openNotesModal(${apt.id}, '${patientName}')">
+                                    Add Medical Record
+                                </button>
+                            ` : `<span class="text-muted">No actions available</span>`}
                         </td>
                     </tr>
                 `;
@@ -206,27 +210,51 @@
                 return;
             }
 
+            const diagnosis = document.getElementById('diagnosis').value;
             const notes = document.getElementById('notes-text').value;
-            const treatmentPlan = document.getElementById('treatment-plan').value;
             const prescription = document.getElementById('prescription').value;
 
             try {
-                const response = await apiCall(`/doctors/appointments/${selectedAppointmentId}/notes`, {
+                const response = await apiCall(`/medical-records`, {
                     method: 'POST',
                     body: JSON.stringify({
                         appointment_id: selectedAppointmentId,
-                        notes: notes,
-                        treatment_plan: treatmentPlan || null,
+                        diagnosis: diagnosis,
+                        notes: notes || null,
                         prescription: prescription || null
                     })
                 });
 
-                alert('✅ Treatment notes saved successfully!');
+                alert('✅ Medical record saved successfully!');
                 closeNotesModal();
                 loadAppointments(); // Refresh appointments list
             } catch (error) {
-                alert('❌ Failed to save treatment notes: ' + error.message);
+                alert('❌ Failed to save medical record: ' + error.message);
                 console.error('Error:', error);
+            }
+        }
+        
+        async function cancelAppointment(id) {
+            if (confirm("Are you sure you want to cancel this appointment?")) {
+                try {
+                    await apiCall(`/appointments/${id}/cancel`, { method: 'PUT' });
+                    alert("Appointment cancelled.");
+                    loadAppointments();
+                } catch(e) {
+                    alert("Error cancelling appointment: " + e.message);
+                }
+            }
+        }
+        
+        async function completeAppointment(id) {
+            if (confirm("Mark this appointment as completed?")) {
+                try {
+                    await apiCall(`/appointments/${id}/complete`, { method: 'PUT' });
+                    alert("Appointment completed.");
+                    loadAppointments();
+                } catch(e) {
+                    alert("Error completing appointment: " + e.message);
+                }
             }
         }
 

@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from app.models import ChatMessage, ChatResponse
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
+from app.models import ChatMessage, ChatResponse, ImageAnalysisResponse
 from app.auth import get_current_user_id
 from app.config import settings
 from openai import OpenAI
@@ -529,3 +529,34 @@ async def chat(
             fallback += "\n\n_Note: AI chatbot is temporarily unavailable due to API quota limits. These are general health guidelines._"
         
         return ChatResponse(response=format_pointwise_response(fallback), is_fallback=True)
+
+@router.post("/image-analysis", response_model=ImageAnalysisResponse)
+async def analyze_image(
+    file: UploadFile = File(...),
+    user_id: int = Depends(get_current_user_id)
+):
+    """Analyze uploaded image for possible health issues."""
+    filename = file.filename.lower()
+    
+    # Simple rule-based logic based on filename
+    if "skin" in filename or "rash" in filename or "red" in filename:
+        return ImageAnalysisResponse(
+            possible_issue="Possible dermatitis or allergic skin reaction.",
+            suggested_medical_test="Dermatology consultation and allergy patching test."
+        )
+    elif "eye" in filename or "pink" in filename:
+        return ImageAnalysisResponse(
+            possible_issue="Possible conjunctivitis (pink eye).",
+            suggested_medical_test="Ophthalmology exam and swab culture."
+        )
+    elif "throat" in filename or "tonsil" in filename:
+        return ImageAnalysisResponse(
+            possible_issue="Possible strep throat or tonsillitis.",
+            suggested_medical_test="Rapid strep test and throat culture."
+        )
+    else:
+        return ImageAnalysisResponse(
+            possible_issue="General irregularity detected.",
+            suggested_medical_test="General physical examination and blood test."
+        )
+

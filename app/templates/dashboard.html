@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - CareConnect</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
     <nav class="navbar">
         <div class="container">
@@ -20,59 +22,72 @@
             </div>
         </div>
     </nav>
-    
+
     <div class="container">
         <h2>Welcome to Your Dashboard</h2>
-        
+
         <!-- User Info Card -->
         <div class="card">
             <h2>👤 Your Profile</h2>
             <div id="user-profile"></div>
         </div>
-        
+
         <!-- Stats Grid -->
         <div class="dashboard-grid">
             <div class="stat-card">
                 <h3>Upcoming Appointments</h3>
                 <div class="stat-value" id="appointment-count">0</div>
             </div>
-            
+
             <div class="stat-card">
                 <h3>Medical Reports</h3>
                 <div class="stat-value" id="report-count">0</div>
             </div>
-            
+
             <div class="stat-card">
                 <h3>Period Tracker</h3>
                 <div class="stat-value" id="period-status">Not Set</div>
             </div>
         </div>
-        
+
         <!-- Upcoming Appointments -->
         <div class="card">
             <h2>📅 Upcoming Appointments</h2>
             <div id="appointments-list"></div>
         </div>
-        
+
+        <!-- Medical Records -->
+        <div class="card" id="medical-records-container">
+            <h2>📄 Medical Records</h2>
+            <div id="medical-records-list">Loading records...</div>
+        </div>
+
+        <!-- Health Risk Insights -->
+        <div class="card" id="health-risks-container">
+            <h2>⚠️ Health Risk Insights</h2>
+            <div id="health-risks-list">Loading risks...</div>
+        </div>
+
         <!-- Period Reminder -->
         <div class="card" id="period-reminder-card" style="display: none;">
             <h2>🔔 Period Reminder</h2>
             <div id="period-reminder"></div>
+            <div id="period-delay-insights" style="margin-top:10px;"></div>
         </div>
-        
+
         <!-- Health Tips -->
         <div class="card">
             <h2>💡 Health Tips for You</h2>
             <div id="health-tips"></div>
         </div>
     </div>
-    
+
     <script src="/static/js/utils.js"></script>
     <script>
         // Require authentication
         requireAuth();
         initNavigation();
-        
+
         // Get user data
         const user = getUser();
 
@@ -84,7 +99,7 @@
             doctorLink.textContent = '👨‍⚕️ Doctor Portal';
             navLinks.insertBefore(doctorLink, navLinks.querySelector('#user-info'));
         }
-        
+
         // Display user profile
         document.getElementById('user-profile').innerHTML = `
             <p><strong>Name:</strong> ${user.name}</p>
@@ -94,7 +109,7 @@
             ${user.specialization ? `<p><strong>Specialization:</strong> ${user.specialization}</p>` : ''}
             ${user.experience !== null ? `<p><strong>Experience:</strong> ${user.experience} years</p>` : ''}
         `;
-        
+
         // Load dashboard data
         async function loadDashboard() {
             try {
@@ -102,7 +117,7 @@
                 const appointments = await apiCall('/appointments');
                 const upcomingAppointments = appointments.filter(apt => apt.status === 'scheduled');
                 document.getElementById('appointment-count').textContent = upcomingAppointments.length;
-                
+
                 // Display appointments
                 const appointmentsList = document.getElementById('appointments-list');
                 if (upcomingAppointments.length === 0) {
@@ -110,7 +125,7 @@
                 } else {
                     // Get doctor info for each appointment
                     let appointmentsHtml = '<ul class="appointment-list">';
-                    
+
                     for (const apt of upcomingAppointments.slice(0, 3)) {
                         try {
                             // Get doctor name from doctor_id
@@ -127,6 +142,7 @@
                                                 Join Video Call
                                             </button>
                                         ` : ''}
+                                        <button class="btn btn-danger btn-small" onclick="cancelAppointment(${apt.id})">Cancel</button>
                                     </div>
                                 </li>
                             `;
@@ -136,24 +152,54 @@
                     }
                     appointmentsHtml += '</ul>';
                     appointmentsList.innerHTML = appointmentsHtml;
-                    
+
                     if (upcomingAppointments.length > 3) {
                         appointmentsList.innerHTML += `<p class="text-center mt-2">
                             <a href="/appointments">View all ${upcomingAppointments.length} appointments</a>
                         </p>`;
                     }
                 }
-                
+
+                // Load Medical Records & Risks
+                try {
+                    const medicalRecords = await apiCall('/medical-records');
+                    const recordsList = document.getElementById('medical-records-list');
+                    if (medicalRecords.length === 0) {
+                        recordsList.innerHTML = '<p class="text-muted">No medical records found</p>';
+                    } else {
+                        let recordsHtml = '<ul class="tips-list">';
+                        for (const mr of medicalRecords) {
+                            recordsHtml += `
+                                <li style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div>
+                                        <strong>Diagnosis:</strong> ${mr.diagnosis} <br>
+                                        <small class="text-muted">Date: ${formatDate(mr.created_at)}</small>
+                                    </div>
+                                    <button class="btn btn-small btn-primary" onclick="downloadMedicalReport(${mr.id})">Download Report</button>
+                                </li>
+                            `;
+                        }
+                        recordsHtml += '</ul>';
+                        recordsList.innerHTML = recordsHtml;
+                    }
+
+                    const risksAnalysis = await apiCall('/medical-records/analysis');
+                    const risksList = document.getElementById('health-risks-list');
+                    risksList.innerHTML = '<ul class="tips-list">' + risksAnalysis.health_risks.map(risk => `<li>${risk}</li>`).join('') + '</ul>';
+                } catch (e) {
+                    document.getElementById('medical-records-list').innerHTML = '<p class="text-error">Error loading records</p>';
+                }
+
                 // Load reports count
                 const reports = await apiCall('/reports');
                 document.getElementById('report-count').textContent = reports.length;
-                
+
                 // Load period tracker data (only for patients)
                 if (user.role === 'patient') {
                     try {
                         const periodData = await apiCall('/period');
                         const daysUntil = periodData.days_until_next;
-                        
+
                         if (daysUntil > 0) {
                             document.getElementById('period-status').textContent = `${daysUntil} days`;
                         } else if (daysUntil === 0) {
@@ -161,11 +207,11 @@
                         } else {
                             document.getElementById('period-status').textContent = 'Late';
                         }
-                        
+
                         // Show period reminder
                         const reminderCard = document.getElementById('period-reminder-card');
                         const reminderDiv = document.getElementById('period-reminder');
-                        
+
                         if (periodData.is_late) {
                             reminderCard.style.display = 'block';
                             reminderDiv.innerHTML = `
@@ -174,6 +220,12 @@
                                     Expected date was ${formatDate(periodData.next_period_date)}.
                                 </div>
                             `;
+                            if (periodData.delay_insights && periodData.delay_insights.length > 0) {
+                                document.getElementById('period-delay-insights').innerHTML = `
+                                    <strong>Possible reasons for delay:</strong>
+                                    <ul>${periodData.delay_insights.map(x => `<li>${x}</li>`).join('')}</ul>
+                                `;
+                            }
                         } else if (daysUntil <= 3 && daysUntil >= 0) {
                             reminderCard.style.display = 'block';
                             reminderDiv.innerHTML = `
@@ -189,30 +241,68 @@
                     }
                 } else {
                     // Hide period tracker for doctors
-                    document.querySelector('[data-hide-for-doctors]') && 
-                        document.querySelector('[data-hide-for-doctors]').style.display = 'none';
+                    const el = document.querySelector('[data-hide-for-doctors]');
+                    if (el) el.style.display = 'none';
                 }
-                
+
                 // Load health tips
                 const tipsData = { age: user.age || null };
                 const healthTips = await apiCall('/health-tips', {
                     method: 'POST',
                     body: JSON.stringify(tipsData)
                 });
-                
+
                 const tipsDiv = document.getElementById('health-tips');
                 tipsDiv.innerHTML = '<ul class="tips-list">' +
                     healthTips.tips.slice(0, 5).map(tip => `<li>${tip}</li>`).join('') +
                     '</ul>';
-                
+
             } catch (error) {
                 console.error('Error loading dashboard:', error);
                 showAlert('Error loading dashboard data', 'danger');
             }
         }
-        
+
         // Load data on page load
         loadDashboard();
+
+        async function cancelAppointment(id) {
+            if (confirm("Are you sure you want to cancel this appointment?")) {
+                try {
+                    await apiCall(`/appointments/${id}/cancel`, { method: "PUT" });
+                    alert("Appointment cancelled.");
+                    loadDashboard();
+                } catch (e) {
+                    alert("Error cancelling appointment: " + e.message);
+                }
+            }
+        }
+
+        function downloadMedicalReport(id) {
+            const token = localStorage.getItem('token');
+            const url = `/api/medical-records/${id}/download`;
+            // For file download with Auth header, we need to fetch and build object URL.
+            fetch(url, { headers: { 'Authorization': token } })
+                .then(response => {
+                    if (!response.ok) throw new Error("Failed to download report");
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'medical_report.txt';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(err => alert(err.message));
+        }
+
+        window.cancelAppointment = cancelAppointment;
+        window.downloadMedicalReport = downloadMedicalReport;
     </script>
 </body>
+
 </html>

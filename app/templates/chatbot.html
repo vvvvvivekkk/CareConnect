@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Health Chatbot - CareConnect</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
     <nav class="navbar">
         <div class="container">
@@ -20,30 +22,30 @@
             </div>
         </div>
     </nav>
-    
+
     <div class="container">
         <div class="card">
             <h2>🤖 Health Assistant Chatbot</h2>
             <p class="text-muted">Ask me about health tips, wellness advice, or general health questions.</p>
-            
+
             <div class="chat-container">
                 <div class="chat-messages" id="chat-messages">
                     <div class="message message-bot">
                         👋 Hello! I'm your healthcare assistant. How can I help you today?
-                        I can provide general health information, wellness tips, and answer your health-related questions.
+                        I can provide general health information, wellness tips, and answer your health-related
+                        questions.
                         Remember, I'm here to help, but always consult a healthcare professional for medical advice.
                     </div>
                 </div>
-                
+
                 <div class="chat-input-container">
-                    <input type="text" id="chat-input" class="form-control" 
-                           placeholder="Type your message..." 
-                           onkeypress="handleKeyPress(event)">
+                    <input type="text" id="chat-input" class="form-control" placeholder="Type your message..."
+                        onkeypress="handleKeyPress(event)">
                     <button class="btn btn-primary" onclick="sendMessage()">Send</button>
                 </div>
             </div>
         </div>
-        
+
         <div class="card">
             <h3>💡 Quick Health Questions</h3>
             <p class="text-muted">Try asking me about:</p>
@@ -57,29 +59,38 @@
                 <li onclick="askQuestion(this.textContent)" style="cursor: pointer;">
                     How much water should I drink daily?
                 </li>
-                <li onclick="askQuestion(this.textContent)" style="cursor: pointer;">
-                    What exercises are good for beginners?
-                </li>
-                <li onclick="askQuestion(this.textContent)" style="cursor: pointer;">
-                    How can I manage stress better?
-                </li>
             </ul>
         </div>
+
+        <div class="card" style="margin-top:20px;">
+            <h3>🩺 Image Analysis</h3>
+            <p class="text-muted">Upload an image (e.g. skin, infection) to get a preliminary analysis.</p>
+            <div class="form-group" style="display:flex; align-items:center; gap:10px;">
+                <input type="file" id="image-upload" accept="image/*" class="form-control" style="width: auto;">
+                <button class="btn btn-primary" onclick="analyzeImage()">Analyze Image</button>
+            </div>
+            <div id="image-analysis-result" style="margin-top:10px; display:none;">
+                <div class="alert alert-info">
+                    <strong>Possible Issue:</strong> <span id="image-issue"></span><br>
+                    <strong>Suggested Test:</strong> <span id="image-test"></span>
+                </div>
+            </div>
+        </div>
     </div>
-    
+
     <script src="/static/js/utils.js"></script>
     <script>
         requireAuth();
         initNavigation();
-        
+
         const chatMessages = document.getElementById('chat-messages');
         const chatInput = document.getElementById('chat-input');
-        
+
         // Add message to chat
         function addMessage(message, isUser = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'message-user' : 'message-bot'}`;
-            
+
             if (isUser) {
                 // User messages are simple text
                 messageDiv.textContent = message;
@@ -90,29 +101,29 @@
                     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') // Bold
                     .replace(/\n/g, '<br>') // Line breaks
                     .replace(/•/g, '•'); // Ensure bullets display
-                
+
                 messageDiv.innerHTML = formattedMessage;
                 messageDiv.style.whiteSpace = 'pre-wrap'; // Preserve spacing
             }
-            
+
             chatMessages.appendChild(messageDiv);
-            
+
             // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
-        
+
         // Send message
         async function sendMessage() {
             const message = chatInput.value.trim();
-            
+
             if (!message) {
                 return;
             }
-            
+
             // Add user message to chat
             addMessage(message, true);
             chatInput.value = '';
-            
+
             // Show typing indicator
             const typingDiv = document.createElement('div');
             typingDiv.className = 'message message-bot';
@@ -120,46 +131,82 @@
             typingDiv.textContent = '💭 Thinking...';
             chatMessages.appendChild(typingDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-            
+
             try {
                 const response = await apiCall('/chat', {
                     method: 'POST',
                     body: JSON.stringify({ message })
                 });
-                
+
                 // Remove typing indicator
                 typingDiv.remove();
-                
+
                 // Add bot response
                 addMessage(response.response, false);
-                
+
             } catch (error) {
                 typingDiv.remove();
                 addMessage('Sorry, I encountered an error. Please try again.', false);
                 console.error('Chat error:', error);
             }
         }
-        
+
         // Handle Enter key
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
                 sendMessage();
             }
         }
-        
+
         // Ask a quick question
         function askQuestion(question) {
             chatInput.value = question;
             sendMessage();
         }
-        
+
+        // Analyze uploaded image
+        async function analyzeImage() {
+            const fileInput = document.getElementById('image-upload');
+            if (fileInput.files.length === 0) {
+                alert("Please select an image first.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                // Since this needs FormData, we use raw fetch instead of apiCall (if apiCall assumes JSON)
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/chat/image-analysis', {
+                    method: 'POST',
+                    headers: { 'Authorization': token },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to analyze image");
+                }
+
+                const result = await response.json();
+
+                document.getElementById('image-issue').textContent = result.possible_issue;
+                document.getElementById('image-test').textContent = result.suggested_medical_test;
+                document.getElementById('image-analysis-result').style.display = 'block';
+            } catch (e) {
+                alert("Error analyzing image: " + e.message);
+            }
+        }
+
         // Make functions available globally
         window.sendMessage = sendMessage;
         window.handleKeyPress = handleKeyPress;
         window.askQuestion = askQuestion;
-        
+        window.analyzeImage = analyzeImage;
+
         // Focus on input
         chatInput.focus();
     </script>
 </body>
+
 </html>
