@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     
     class Config:
-        env_file = ".env"
+        env_file = str(Path(__file__).parent / ".env")
         extra = "ignore"
 
 settings = Settings()

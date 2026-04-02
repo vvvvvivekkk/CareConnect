@@ -164,9 +164,11 @@
                         <td>${apt.time}</td>
                         <td><span class="status-badge status-${apt.status}">${apt.status}</span></td>
                         <td>
-                            <button class="btn btn-small btn-primary" onclick="joinCall('${apt.meeting_link}')">
-                                Join Call
-                            </button>
+                            ${apt.meeting_link ? `
+                                <a class="btn btn-small btn-primary" href="${apt.meeting_link}" target="_blank" rel="noopener noreferrer">
+                                    Join Call
+                                </a>
+                            ` : '<span class="text-muted">No meeting link</span>'}
                             <button class="btn btn-small btn-success" onclick="openNotesModal(${apt.id}, '${patientName}')">
                                 Add Notes
                             </button>
@@ -228,15 +230,6 @@
             }
         }
 
-        // Join video call
-        function joinCall(meetingLink) {
-            if (!meetingLink) {
-                alert('Meeting link not available');
-                return;
-            }
-            window.open(meetingLink, '_blank');
-        }
-
         // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('notes-modal');
@@ -249,7 +242,6 @@
         window.openNotesModal = openNotesModal;
         window.closeNotesModal = closeNotesModal;
         window.submitTreatmentNotes = submitTreatmentNotes;
-        window.joinCall = joinCall;
 
         // Load data on page load
         loadDoctorData();

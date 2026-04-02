@@ -90,10 +90,12 @@
                             </div>
                             <div class="appointment-actions">
                                 ${apt.status === 'scheduled' && apt.meeting_link ? `
-                                    <button class="btn btn-success" 
-                                            onclick="window.open('${apt.meeting_link}', '_blank')">
+                                    <a class="btn btn-success" 
+                                       href="${apt.meeting_link}"
+                                       target="_blank"
+                                       rel="noopener noreferrer">
                                         🎥 Join Video Call
-                                    </button>
+                                    </a>
                                 ` : ''}
                                 ${apt.status === 'scheduled' ? `
                                     <button class="btn btn-danger" 
