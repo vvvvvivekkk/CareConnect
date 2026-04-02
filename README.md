@@ -112,6 +112,45 @@ CareConnect/
 - pip (Python package manager)
 - Web browser (Chrome, Firefox, Edge, Safari)
 
+## ⚡ Quick Run Commands (Windows)
+
+Run these commands in two terminals.
+
+### Terminal 1 (Backend API)
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+### Terminal 2 (Frontend)
+
+```bash
+cd frontend
+python -m http.server 8080
+```
+
+Open in browser:
+- Frontend: http://localhost:8080
+- Backend API: http://localhost:8000
+- Swagger docs: http://localhost:8000/docs
+
+## 🔌 Ports To Open
+
+For local development, make sure these ports are allowed in firewall/security settings:
+
+- `8000` (Backend FastAPI server)
+- `8080` (Frontend static server)
+
+Optional/External service ports:
+- `443` outbound (HTTPS for OpenAI API and Jitsi Meet)
+- `80` outbound (HTTP redirects if any)
+
+If you are running only on your own machine, `localhost` access is usually enough and no router/NAT changes are required.
+
 ### Step 1: Install Backend Dependencies
 
 ```bash
