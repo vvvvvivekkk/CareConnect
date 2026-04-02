@@ -7,9 +7,9 @@ from datetime import datetime
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
-def generate_meeting_link(user_id: int, appointment_id: int) -> str:
+def generate_meeting_link(appointment_id: int) -> str:
     """Generate a unique Jitsi meeting link"""
-    room_id = f"careconnect-{user_id}-{appointment_id}-{uuid.uuid4().hex[:8]}"
+    room_id = f"careconnect-{appointment_id}-{uuid.uuid4().hex[:8]}"
     return f"https://meet.jit.si/{room_id}"
 
 @router.post("", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
@@ -17,20 +17,28 @@ async def create_appointment(
     appointment: AppointmentCreate,
     user_id: int = Depends(get_current_user_id)
 ):
-    """Create a new appointment"""
+    """Create a new appointment (patient books with doctor)"""
     with get_db() as conn:
         cursor = conn.cursor()
         
-        # Insert appointment without meeting link first
+        # Verify doctor exists
+        cursor.execute("SELECT id FROM users WHERE id = ? AND role = ?", (appointment.doctor_id, "doctor"))
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Doctor not found"
+            )
+        
+        # Insert appointment
         cursor.execute(
-            """INSERT INTO appointments (user_id, doctor_name, date, time, status) 
+            """INSERT INTO appointments (patient_id, doctor_id, date, time, status) 
                VALUES (?, ?, ?, ?, ?)""",
-            (user_id, appointment.doctor_name, appointment.date, appointment.time, "scheduled")
+            (user_id, appointment.doctor_id, appointment.date, appointment.time, "scheduled")
         )
         appointment_id = cursor.lastrowid
         
         # Generate meeting link
-        meeting_link = generate_meeting_link(user_id, appointment_id)
+        meeting_link = generate_meeting_link(appointment_id)
         
         # Update appointment with meeting link
         cursor.execute(
@@ -44,8 +52,8 @@ async def create_appointment(
         
         return AppointmentResponse(
             id=result["id"],
-            user_id=result["user_id"],
-            doctor_name=result["doctor_name"],
+            patient_id=result["patient_id"],
+            doctor_id=result["doctor_id"],
             date=result["date"],
             time=result["time"],
             meeting_link=result["meeting_link"],
@@ -55,22 +63,22 @@ async def create_appointment(
 
 @router.get("", response_model=list[AppointmentResponse])
 async def get_appointments(user_id: int = Depends(get_current_user_id)):
-    """Get all appointments for current user"""
+    """Get appointments for current user (patient or doctor)"""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
             """SELECT * FROM appointments 
-               WHERE user_id = ? 
+               WHERE patient_id = ? OR doctor_id = ?
                ORDER BY date DESC, time DESC""",
-            (user_id,)
+            (user_id, user_id)
         )
         appointments = cursor.fetchall()
         
         return [
             AppointmentResponse(
                 id=apt["id"],
-                user_id=apt["user_id"],
-                doctor_name=apt["doctor_name"],
+                patient_id=apt["patient_id"],
+                doctor_id=apt["doctor_id"],
                 date=apt["date"],
                 time=apt["time"],
                 meeting_link=apt["meeting_link"],
@@ -85,12 +93,12 @@ async def get_appointment(
     appointment_id: int,
     user_id: int = Depends(get_current_user_id)
 ):
-    """Get a specific appointment"""
+    """Get a specific appointment (if user is patient or doctor)"""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT * FROM appointments WHERE id = ? AND user_id = ?",
-            (appointment_id, user_id)
+            "SELECT * FROM appointments WHERE id = ? AND (patient_id = ? OR doctor_id = ?)",
+            (appointment_id, user_id, user_id)
         )
         appointment = cursor.fetchone()
         
@@ -102,8 +110,8 @@ async def get_appointment(
         
         return AppointmentResponse(
             id=appointment["id"],
-            user_id=appointment["user_id"],
-            doctor_name=appointment["doctor_name"],
+            patient_id=appointment["patient_id"],
+            doctor_id=appointment["doctor_id"],
             date=appointment["date"],
             time=appointment["time"],
             meeting_link=appointment["meeting_link"],
@@ -116,13 +124,13 @@ async def cancel_appointment(
     appointment_id: int,
     user_id: int = Depends(get_current_user_id)
 ):
-    """Cancel an appointment"""
+    """Cancel an appointment (patient can cancel)"""
     with get_db() as conn:
         cursor = conn.cursor()
         
-        # Check if appointment exists and belongs to user
+        # Check if appointment exists and user is patient
         cursor.execute(
-            "SELECT id FROM appointments WHERE id = ? AND user_id = ?",
+            "SELECT id FROM appointments WHERE id = ? AND patient_id = ?",
             (appointment_id, user_id)
         )
         if not cursor.fetchone():

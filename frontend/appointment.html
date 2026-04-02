@@ -12,6 +12,7 @@
             <h1>🏥 CareConnect</h1>
             <div class="nav-links">
                 <a href="dashboard.html">Dashboard</a>
+                <a href="doctors.html">Find Doctors</a>
                 <a href="appointment.html">Appointments</a>
                 <a href="period.html">Period Tracker</a>
                 <a href="upload.html">Reports</a>
@@ -24,28 +25,11 @@
     <div class="container">
         <h2>📅 Appointments</h2>
         
-        <!-- Book New Appointment -->
+        <!-- Quick Action -->
         <div class="card">
-            <h2>Book New Appointment</h2>
-            <form id="appointment-form">
-                <div class="form-group">
-                    <label for="doctor-name">Doctor Name</label>
-                    <input type="text" id="doctor-name" class="form-control" 
-                           placeholder="e.g., Dr. Smith" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="date">Date</label>
-                    <input type="date" id="date" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="time">Time</label>
-                    <input type="time" id="time" class="form-control" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Book Appointment</button>
-            </form>
+            <h3>📋 Want to book a new appointment?</h3>
+            <p class="text-muted">Browse our doctors and book an appointment</p>
+            <a href="doctors.html" class="btn btn-primary">Find Doctors</a>
         </div>
         
         <!-- Appointments List -->
@@ -62,62 +46,14 @@
         requireAuth();
         initNavigation();
         
-        // Set minimum date to today
-        const dateInput = document.getElementById('date');
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.min = today;
-        dateInput.value = today;
-        
-        // Book appointment form
-        const appointmentForm = document.getElementById('appointment-form');
-        
-        appointmentForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const doctorName = document.getElementById('doctor-name').value;
-            const date = document.getElementById('date').value;
-            const time = document.getElementById('time').value;
-            
-            try {
-                const submitBtn = appointmentForm.querySelector('button[type="submit"]');
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Booking...';
-                
-                await apiCall('/appointments', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        doctor_name: doctorName,
-                        date: date,
-                        time: time
-                    })
-                });
-                
-                showAlert('Appointment booked successfully!', 'success');
-                appointmentForm.reset();
-                dateInput.value = today;
-                
-                // Reload appointments
-                loadAppointments();
-                
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Book Appointment';
-                
-            } catch (error) {
-                showAlert('Failed to book appointment: ' + error.message, 'danger');
-                const submitBtn = appointmentForm.querySelector('button[type="submit"]');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Book Appointment';
-            }
-        });
-        
-        // Load appointments
+        // Cancel appointment
         async function loadAppointments() {
             try {
                 const appointments = await apiCall('/appointments');
                 const appointmentsList = document.getElementById('appointments-list');
                 
                 if (appointments.length === 0) {
-                    appointmentsList.innerHTML = '<p class="text-muted">No appointments yet</p>';
+                    appointmentsList.innerHTML = '<p class="text-muted">No appointments yet. <a href="doctors.html">Browse doctors</a> to book one.</p>';
                     return;
                 }
                 
@@ -127,38 +63,50 @@
                     const dateB = new Date(b.date + ' ' + b.time);
                     return dateB - dateA;
                 });
+
+                // Get doctor info for each appointment
+                let appointmentsHtml = '<ul class="appointment-list">';
                 
-                appointmentsList.innerHTML = '<ul class="appointment-list">' +
-                    appointments.map(apt => {
-                        const statusBadge = apt.status === 'scheduled' 
-                            ? '<span style="color: var(--success-color);">✓ Scheduled</span>'
-                            : '<span style="color: var(--danger-color);">✗ Cancelled</span>';
-                        
-                        return `
-                            <li class="appointment-item">
-                                <div class="appointment-info">
-                                    <h4>Dr. ${apt.doctor_name}</h4>
-                                    <p>${formatDate(apt.date)} at ${formatTime(apt.time)}</p>
-                                    <p>${statusBadge}</p>
-                                </div>
-                                <div class="appointment-actions">
-                                    ${apt.status === 'scheduled' && apt.meeting_link ? `
-                                        <button class="btn btn-success" 
-                                                onclick="window.open('${apt.meeting_link}', '_blank')">
-                                            🎥 Join Video Call
-                                        </button>
-                                    ` : ''}
-                                    ${apt.status === 'scheduled' ? `
-                                        <button class="btn btn-danger" 
-                                                onclick="cancelAppointment(${apt.id})">
-                                            Cancel
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            </li>
-                        `;
-                    }).join('') +
-                    '</ul>';
+                for (const apt of appointments) {
+                    let doctorName = 'Doctor #' + apt.doctor_id;
+                    try {
+                        const docResponse = await apiCall(`/doctors/${apt.doctor_id}`);
+                        doctorName = `Dr. ${docResponse.name} - ${docResponse.specialization}`;
+                    } catch (e) {
+                        console.error('Error getting doctor info:', e);
+                    }
+
+                    const statusBadge = apt.status === 'scheduled' 
+                        ? '<span style="color: var(--success-color);">✓ Scheduled</span>'
+                        : '<span style="color: var(--danger-color);">✗ Cancelled</span>';
+                    
+                    appointmentsHtml += `
+                        <li class="appointment-item">
+                            <div class="appointment-info">
+                                <h4>${doctorName}</h4>
+                                <p>${formatDate(apt.date)} at ${formatTime(apt.time)}</p>
+                                <p>${statusBadge}</p>
+                                ${apt.meeting_link ? `<p class="mt-2"><strong>Meeting:</strong> ${apt.meeting_link}</p>` : ''}
+                            </div>
+                            <div class="appointment-actions">
+                                ${apt.status === 'scheduled' && apt.meeting_link ? `
+                                    <button class="btn btn-success" 
+                                            onclick="window.open('${apt.meeting_link}', '_blank')">
+                                        🎥 Join Video Call
+                                    </button>
+                                ` : ''}
+                                ${apt.status === 'scheduled' ? `
+                                    <button class="btn btn-danger" 
+                                            onclick="cancelAppointment(${apt.id})">
+                                        Cancel
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </li>
+                    `;
+                }
+                appointmentsHtml += '</ul>';
+                appointmentsList.innerHTML = appointmentsHtml;
                 
             } catch (error) {
                 document.getElementById('appointments-list').innerHTML = 

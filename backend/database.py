@@ -27,7 +27,7 @@ def init_db():
     with get_db() as conn:
         cursor = conn.cursor()
         
-        # Users table
+        # Users table (supports both patients and doctors)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,22 +35,42 @@ def init_db():
                 email TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
                 age INTEGER,
+                role TEXT DEFAULT 'patient',
+                specialization TEXT,
+                experience INTEGER,
+                profile_image TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         
-        # Appointments table
+        # Appointments table (updated for telemedicine)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS appointments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                doctor_name TEXT NOT NULL,
+                patient_id INTEGER NOT NULL,
+                doctor_id INTEGER NOT NULL,
                 date TEXT NOT NULL,
                 time TEXT NOT NULL,
                 meeting_link TEXT,
                 status TEXT DEFAULT 'scheduled',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
+                FOREIGN KEY (patient_id) REFERENCES users (id),
+                FOREIGN KEY (doctor_id) REFERENCES users (id)
+            )
+        """)
+        
+        # Treatment notes table (doctor adds notes after consultation)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS treatment_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                appointment_id INTEGER NOT NULL UNIQUE,
+                doctor_id INTEGER NOT NULL,
+                notes TEXT NOT NULL,
+                treatment_plan TEXT,
+                prescription TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (appointment_id) REFERENCES appointments (id),
+                FOREIGN KEY (doctor_id) REFERENCES users (id)
             )
         """)
         

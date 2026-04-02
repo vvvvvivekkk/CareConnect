@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard - CareConnect</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>🏥 CareConnect - Doctor Portal</h1>
+            <div class="nav-links">
+                <a href="doctor_dashboard.html">Dashboard</a>
+                <a href="dashboard.html">Back to Patient View</a>
+                <div id="user-info"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Doctor Info Card -->
+        <div class="card">
+            <h2>👨‍⚕️ Doctor Profile</h2>
+            <div id="doctor-profile">
+                <p class="text-muted">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Appointments Section -->
+        <div class="card">
+            <h2>📅 My Appointments</h2>
+            <div id="appointments-list">
+                <p class="text-muted">Loading appointments...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Treatment Notes Modal -->
+    <div id="notes-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeNotesModal()">&times;</span>
+            <h3>Add Treatment Notes</h3>
+            <div id="patient-info-display"></div>
+            
+            <form id="notes-form" onsubmit="submitTreatmentNotes(event)">
+                <div class="form-group">
+                    <label>Consultation Notes:</label>
+                    <textarea id="notes-text" class="form-control" placeholder="Describe the consultation..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Treatment Plan (optional):</label>
+                    <textarea id="treatment-plan" class="form-control" placeholder="Prescribe treatment steps..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Prescription (optional):</label>
+                    <textarea id="prescription" class="form-control" placeholder="List medications..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Treatment Notes</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script>
+        requireAuth();
+        initNavigation();
+
+        let currentUser = null;
+        let selectedAppointmentId = null;
+        let selectedPatientName = null;
+
+        // Load doctor profile and appointments
+        async function loadDoctorData() {
+            try {
+                // Get current user
+                const userResponse = await apiCall('/users/me', {
+                    method: 'GET'
+                });
+
+                currentUser = userResponse;
+
+                // Check if user is doctor
+                if (currentUser.role !== 'doctor') {
+                    document.body.innerHTML = '<div class="container"><div class="card"><p class="text-error">❌ Access Denied. Only doctors can access this page.</p></div></div>';
+                    return;
+                }
+
+                displayDoctorProfile(currentUser);
+                loadAppointments();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error loading doctor data');
+            }
+        }
+
+        // Display doctor profile
+        function displayDoctorProfile(doctor) {
+            const profileHtml = `
+                <div class="profile-info">
+                    <p><strong>Name:</strong> ${doctor.name}</p>
+                    <p><strong>Email:</strong> ${doctor.email}</p>
+                    <p><strong>Specialization:</strong> ${doctor.specialization}</p>
+                    <p><strong>Experience:</strong> ${doctor.experience} years</p>
+                </div>
+            `;
+            document.getElementById('doctor-profile').innerHTML = profileHtml;
+        }
+
+        // Load doctor's appointments
+        async function loadAppointments() {
+            try {
+                const response = await apiCall('/doctors/me/appointments', {
+                    method: 'GET'
+                });
+
+                displayAppointments(response);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('appointments-list').innerHTML = 
+                    '<p class="text-error">Error loading appointments</p>';
+            }
+        }
+
+        // Display appointments in a table
+        async function displayAppointments(appointments) {
+            const appointmentsList = document.getElementById('appointments-list');
+
+            if (!appointments || appointments.length === 0) {
+                appointmentsList.innerHTML = '<p class="text-muted">No appointments scheduled</p>';
+                return;
+            }
+
+            let appointmentsHtml = '<table class="appointments-table"><thead><tr>' +
+                '<th>Patient ID</th>' +
+                '<th>Date</th>' +
+                '<th>Time</th>' +
+                '<th>Status</th>' +
+                '<th>Actions</th>' +
+                '</tr></thead><tbody>';
+
+            for (const apt of appointments) {
+                let patientName = 'Patient #' + apt.patient_id;
+                try {
+                    // Try to get patient name (optional - may fail due to permissions)
+                    const patientResponse = await fetch(`http://localhost:8000/users/${apt.patient_id}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': localStorage.getItem('token')
+                        }
+                    });
+                    if (patientResponse.ok) {
+                        const patient = await patientResponse.json();
+                        patientName = patient.name;
+                    }
+                } catch (e) {
+                    // Keep default patient ID display
+                }
+
+                appointmentsHtml += `
+                    <tr>
+                        <td>${apt.patient_id}</td>
+                        <td>${apt.date}</td>
+                        <td>${apt.time}</td>
+                        <td><span class="status-badge status-${apt.status}">${apt.status}</span></td>
+                        <td>
+                            <button class="btn btn-small btn-primary" onclick="joinCall('${apt.meeting_link}')">
+                                Join Call
+                            </button>
+                            <button class="btn btn-small btn-success" onclick="openNotesModal(${apt.id}, '${patientName}')">
+                                Add Notes
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            appointmentsHtml += '</tbody></table>';
+            appointmentsList.innerHTML = appointmentsHtml;
+        }
+
+        // Open treatment notes modal
+        function openNotesModal(appointmentId, patientName) {
+            selectedAppointmentId = appointmentId;
+            selectedPatientName = patientName;
+            document.getElementById('patient-info-display').textContent = `Patient: ${patientName} (Appointment #${appointmentId})`;
+            document.getElementById('notes-modal').style.display = 'block';
+        }
+
+        // Close notes modal
+        function closeNotesModal() {
+            document.getElementById('notes-modal').style.display = 'none';
+            document.getElementById('notes-form').reset();
+            selectedAppointmentId = null;
+            selectedPatientName = null;
+        }
+
+        // Submit treatment notes
+        async function submitTreatmentNotes(event) {
+            event.preventDefault();
+
+            if (!selectedAppointmentId) {
+                alert('Appointment not selected');
+                return;
+            }
+
+            const notes = document.getElementById('notes-text').value;
+            const treatmentPlan = document.getElementById('treatment-plan').value;
+            const prescription = document.getElementById('prescription').value;
+
+            try {
+                const response = await apiCall(`/doctors/appointments/${selectedAppointmentId}/notes`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        appointment_id: selectedAppointmentId,
+                        notes: notes,
+                        treatment_plan: treatmentPlan || null,
+                        prescription: prescription || null
+                    })
+                });
+
+                alert('✅ Treatment notes saved successfully!');
+                closeNotesModal();
+                loadAppointments(); // Refresh appointments list
+            } catch (error) {
+                alert('❌ Failed to save treatment notes: ' + error.message);
+                console.error('Error:', error);
+            }
+        }
+
+        // Join video call
+        function joinCall(meetingLink) {
+            if (!meetingLink) {
+                alert('Meeting link not available');
+                return;
+            }
+            window.open(meetingLink, '_blank');
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('notes-modal');
+            if (event.target === modal) {
+                closeNotesModal();
+            }
+        }
+
+        // Make functions available globally
+        window.openNotesModal = openNotesModal;
+        window.closeNotesModal = closeNotesModal;
+        window.submitTreatmentNotes = submitTreatmentNotes;
+        window.joinCall = joinCall;
+
+        // Load data on page load
+        loadDoctorData();
+    </script>
+
+    <style>
+        .profile-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .profile-info p {
+            margin: 10px 0;
+            font-size: 1.05em;
+        }
+
+        .profile-info strong {
+            color: #4f46e5;
+        }
+
+        .appointments-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+        }
+
+        .appointments-table thead {
+            background: #f8f9fa;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .appointments-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .appointments-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .appointments-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .status-scheduled {
+            background: #cfe9ff;
+            color: #0066cc;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9em;
+            margin: 0 5px 0 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group textarea,
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        @media (max-width: 768px) {
+            .appointments-table {
+                font-size: 0.9em;
+            }
+
+            .appointments-table th,
+            .appointments-table td {
+                padding: 8px;
+            }
+
+            .btn-small {
+                display: block;
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
+    </style>
+</body>
+</html>

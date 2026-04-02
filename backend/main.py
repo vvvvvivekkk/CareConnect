@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import init_db
-from routes import users, appointments, chatbot, reports, period, health_tips
+from routes import users, appointments, chatbot, reports, period, health_tips, doctors
 from config import settings
 import os
 
@@ -36,6 +36,7 @@ app.include_router(chatbot.router)
 app.include_router(reports.router)
 app.include_router(period.router)
 app.include_router(health_tips.router)
+app.include_router(doctors.router)
 
 @app.get("/")
 async def root():

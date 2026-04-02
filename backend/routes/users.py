@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from models import UserCreate, UserLogin, UserResponse, Token
+from models import UserCreate, UserLogin, UserResponse, Token, DoctorRegister
 from auth import hash_password, verify_password, create_access_token, get_current_user_id
 from database import get_db
 
@@ -7,7 +7,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
-    """Register a new user"""
+    """Register a new patient"""
     with get_db() as conn:
         cursor = conn.cursor()
         
@@ -22,8 +22,8 @@ async def register(user: UserCreate):
         # Hash password and insert user
         hashed_password = hash_password(user.password)
         cursor.execute(
-            "INSERT INTO users (name, email, password, age) VALUES (?, ?, ?, ?)",
-            (user.name, user.email, hashed_password, user.age)
+            "INSERT INTO users (name, email, password, age, role) VALUES (?, ?, ?, ?, ?)",
+            (user.name, user.email, hashed_password, user.age, "patient")
         )
         user_id = cursor.lastrowid
         
@@ -32,11 +32,50 @@ async def register(user: UserCreate):
             id=user_id,
             name=user.name,
             email=user.email,
-            age=user.age
+            age=user.age,
+            role="patient"
         )
         
         # Create access token
         access_token = create_access_token(data={"sub": str(user_id)})
+        
+        return Token(access_token=access_token, user=user_response)
+
+@router.post("/doctor/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+async def register_doctor(doctor: DoctorRegister):
+    """Register a new doctor"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # Check if email already exists
+        cursor.execute("SELECT id FROM users WHERE email = ?", (doctor.email,))
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Hash password and insert doctor
+        hashed_password = hash_password(doctor.password)
+        cursor.execute(
+            """INSERT INTO users (name, email, password, role, specialization, experience) 
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (doctor.name, doctor.email, hashed_password, "doctor", doctor.specialization, doctor.experience)
+        )
+        doctor_id = cursor.lastrowid
+        
+        # Create user response
+        user_response = UserResponse(
+            id=doctor_id,
+            name=doctor.name,
+            email=doctor.email,
+            role="doctor",
+            specialization=doctor.specialization,
+            experience=doctor.experience
+        )
+        
+        # Create access token
+        access_token = create_access_token(data={"sub": str(doctor_id)})
         
         return Token(access_token=access_token, user=user_response)
 
@@ -68,7 +107,10 @@ async def login(credentials: UserLogin):
             id=user["id"],
             name=user["name"],
             email=user["email"],
-            age=user["age"]
+            age=user["age"],
+            role=user["role"],
+            specialization=user["specialization"],
+            experience=user["experience"]
         )
         
         # Create access token
@@ -94,5 +136,8 @@ async def get_current_user(user_id: int = Depends(get_current_user_id)):
             id=user["id"],
             name=user["name"],
             email=user["email"],
-            age=user["age"]
+            age=user["age"],
+            role=user["role"],
+            specialization=user["specialization"],
+            experience=user["experience"]
         )

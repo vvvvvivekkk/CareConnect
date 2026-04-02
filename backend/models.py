@@ -8,6 +8,14 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6)
     age: Optional[int] = None
+    role: str = "patient"  # 'patient' or 'doctor'
+
+class DoctorRegister(BaseModel):
+    name: str = Field(..., min_length=1)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    specialization: str = Field(..., min_length=1)
+    experience: int = Field(..., ge=0)  # Years of experience
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -18,6 +26,16 @@ class UserResponse(BaseModel):
     name: str
     email: str
     age: Optional[int] = None
+    role: str
+    specialization: Optional[str] = None
+    experience: Optional[int] = None
+
+class DoctorResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    specialization: str
+    experience: int
     
 class Token(BaseModel):
     access_token: str
@@ -26,18 +44,34 @@ class Token(BaseModel):
 
 # Appointment Models
 class AppointmentCreate(BaseModel):
-    doctor_name: str = Field(..., min_length=1)
+    doctor_id: int
     date: str  # Format: YYYY-MM-DD
     time: str  # Format: HH:MM
 
 class AppointmentResponse(BaseModel):
     id: int
-    user_id: int
-    doctor_name: str
+    patient_id: int
+    doctor_id: int
     date: str
     time: str
     meeting_link: Optional[str] = None
     status: str
+    created_at: Optional[str] = None
+
+# Treatment Notes Models
+class TreatmentNotesCreate(BaseModel):
+    appointment_id: int
+    notes: str = Field(..., min_length=1)
+    treatment_plan: Optional[str] = None
+    prescription: Optional[str] = None
+
+class TreatmentNotesResponse(BaseModel):
+    id: int
+    appointment_id: int
+    doctor_id: int
+    notes: str
+    treatment_plan: Optional[str] = None
+    prescription: Optional[str] = None
     created_at: Optional[str] = None
 
 # Report Models
