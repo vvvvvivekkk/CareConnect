@@ -3,6 +3,7 @@ from models import ChatMessage, ChatResponse
 from auth import get_current_user_id
 from config import settings
 from openai import OpenAI
+import re
 
 router = APIRouter(prefix="/chat", tags=["chatbot"])
 
@@ -18,10 +19,39 @@ Important guidelines:
 - Always remind users to consult healthcare professionals for medical diagnoses and treatment
 - Never provide specific medical diagnoses or prescribe medications
 - Keep responses concise, supportive, and easy to understand
+- Always format your response pointwise using short bullet points
 - If a question is beyond your scope, kindly direct the user to consult a doctor
 - Be empathetic and encouraging
 
 Remember: You are a helpful assistant, not a replacement for professional medical advice."""
+
+
+def format_pointwise_response(text: str) -> str:
+    """Ensure chatbot output is returned in pointwise bullet format."""
+    if not text:
+        return ""
+
+    cleaned = text.strip().replace("\r\n", "\n")
+    lines = [line.strip() for line in cleaned.split("\n") if line.strip()]
+
+    # Keep existing pointwise formatting when already present.
+    if any(re.match(r"^(\d+\.|[-*•])\s+", line) for line in lines):
+        return "\n".join(lines)
+
+    compact_text = " ".join(lines)
+    sentences = [
+        part.strip()
+        for part in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", compact_text)
+        if part.strip()
+    ]
+
+    if len(sentences) <= 1:
+        sentences = [segment.strip() for segment in re.split(r"[,;]\s+", compact_text) if segment.strip()]
+
+    if not sentences:
+        sentences = [compact_text]
+
+    return "\n".join(f"• {sentence}" for sentence in sentences)
 
 @router.post("", response_model=ChatResponse)
 async def chat(
@@ -34,7 +64,9 @@ async def chat(
         if settings.OPENAI_API_KEY == "your-openai-api-key-here":
             # Return a fallback response if API key is not configured
             return ChatResponse(
-                response="Hello! I'm your healthcare assistant. To enable AI-powered responses, please configure your OpenAI API key in the backend .env file. For now, I can tell you that maintaining a healthy lifestyle includes regular exercise, balanced diet, adequate sleep, and regular health check-ups. How can I assist you today?",
+                response=format_pointwise_response(
+                    "Hello! I'm your healthcare assistant. To enable AI-powered responses, please configure your OpenAI API key in the backend .env file. For now, I can tell you that maintaining a healthy lifestyle includes regular exercise, balanced diet, adequate sleep, and regular health check-ups. How can I assist you today?"
+                ),
                 is_fallback=True
             )
         
@@ -55,7 +87,7 @@ async def chat(
         # Extract response
         bot_response = response.choices[0].message.content
         
-        return ChatResponse(response=bot_response, is_fallback=False)
+        return ChatResponse(response=format_pointwise_response(bot_response), is_fallback=False)
         
     except Exception as e:
         # Log error and return fallback response
@@ -496,4 +528,4 @@ async def chat(
         if "quota" in error_msg.lower() or "rate_limit" in error_msg.lower():
             fallback += "\n\n_Note: AI chatbot is temporarily unavailable due to API quota limits. These are general health guidelines._"
         
-        return ChatResponse(response=fallback, is_fallback=True)
+        return ChatResponse(response=format_pointwise_response(fallback), is_fallback=True)

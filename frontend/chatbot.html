@@ -79,7 +79,22 @@
         function addMessage(message, isUser = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'message-user' : 'message-bot'}`;
-            messageDiv.textContent = message;
+            
+            if (isUser) {
+                // User messages are simple text
+                messageDiv.textContent = message;
+            } else {
+                // Bot messages: preserve formatting and convert to HTML
+                // Replace line breaks with <br> and preserve structure
+                const formattedMessage = message
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') // Bold
+                    .replace(/\n/g, '<br>') // Line breaks
+                    .replace(/•/g, '•'); // Ensure bullets display
+                
+                messageDiv.innerHTML = formattedMessage;
+                messageDiv.style.whiteSpace = 'pre-wrap'; // Preserve spacing
+            }
+            
             chatMessages.appendChild(messageDiv);
             
             // Scroll to bottom
