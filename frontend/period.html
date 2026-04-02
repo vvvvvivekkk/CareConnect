@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Period Tracker - CareConnect</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>🏥 CareConnect</h1>
+            <div class="nav-links">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="appointment.html">Appointments</a>
+                <a href="period.html">Period Tracker</a>
+                <a href="upload.html">Reports</a>
+                <a href="chatbot.html">Chatbot</a>
+                <div id="user-info"></div>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h2>🔔 Period Tracker</h2>
+        
+        <!-- Input Period Date -->
+        <div class="card">
+            <h2>Track Your Period</h2>
+            <form id="period-form">
+                <div class="form-group">
+                    <label for="period-date">Last Period Date</label>
+                    <input type="date" id="period-date" class="form-control" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Save Date</button>
+            </form>
+        </div>
+        
+        <!-- Period Prediction -->
+        <div class="card" id="prediction-card" style="display: none;">
+            <h2>📊 Your Period Cycle</h2>
+            <div id="prediction-content"></div>
+        </div>
+        
+        <!-- Cycle Length Settings -->
+        <div class="card">
+            <h2>⚙️ Cycle Settings</h2>
+            <p class="text-muted">Average cycle length (21-35 days)</p>
+            <form id="cycle-form">
+                <div class="form-group">
+                    <label for="cycle-length">Cycle Length (days)</label>
+                    <input type="number" id="cycle-length" class="form-control" 
+                           min="21" max="35" value="28" required>
+                    <small class="text-muted">Default is 28 days</small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Update Cycle Length</button>
+            </form>
+        </div>
+        
+        <!-- Period Tips -->
+        <div class="card">
+            <h2>💡 Period Care Tips</h2>
+            <ul class="tips-list">
+                <li>🥤 Stay hydrated - drink plenty of water to reduce bloating</li>
+                <li>🏃 Light exercise can help reduce cramps and improve mood</li>
+                <li>🌡️ Use a heating pad for cramp relief</li>
+                <li>😴 Get adequate rest - your body needs extra sleep during your period</li>
+                <li>🥗 Eat iron-rich foods to replenish nutrients</li>
+                <li>🧘 Practice relaxation techniques to manage stress and pain</li>
+                <li>📝 Track your symptoms to identify patterns and discuss with your doctor</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script src="js/utils.js"></script>
+    <script>
+        requireAuth();
+        initNavigation();
+        
+        const periodForm = document.getElementById('period-form');
+        const cycleForm = document.getElementById('cycle-form');
+        const periodDateInput = document.getElementById('period-date');
+        const cycleLengthInput = document.getElementById('cycle-length');
+        const predictionCard = document.getElementById('prediction-card');
+        const predictionContent = document.getElementById('prediction-content');
+        
+        // Set max date to today
+        const today = new Date().toISOString().split('T')[0];
+        periodDateInput.max = today;
+        
+        // Save period date
+        periodForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const periodDate = periodDateInput.value;
+            
+            try {
+                const submitBtn = periodForm.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Saving...';
+                
+                const data = await apiCall('/period', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        last_period_date: periodDate
+                    })
+                });
+                
+                showAlert('Period date saved successfully!', 'success');
+                displayPrediction(data);
+                
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Date';
+                
+            } catch (error) {
+                showAlert('Failed to save period date: ' + error.message, 'danger');
+                const submitBtn = periodForm.querySelector('button[type="submit"]');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Date';
+            }
+        });
+        
+        // Update cycle length
+        cycleForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const cycleLength = parseInt(cycleLengthInput.value);
+            
+            if (cycleLength < 21 || cycleLength > 35) {
+                showAlert('Cycle length must be between 21 and 35 days', 'warning');
+                return;
+            }
+            
+            try {
+                const submitBtn = cycleForm.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Updating...';
+                
+                const data = await apiCall(`/period/cycle-length?cycle_length=${cycleLength}`, {
+                    method: 'PUT'
+                });
+                
+                showAlert('Cycle length updated successfully!', 'success');
+                displayPrediction(data);
+                
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Update Cycle Length';
+                
+            } catch (error) {
+                showAlert('Failed to update cycle length: ' + error.message, 'danger');
+                const submitBtn = cycleForm.querySelector('button[type="submit"]');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Update Cycle Length';
+            }
+        });
+        
+        // Display prediction
+        function displayPrediction(data) {
+            predictionCard.style.display = 'block';
+            
+            let statusClass = 'alert-info';
+            let statusMessage = '';
+            
+            if (data.is_late) {
+                statusClass = 'alert-warning';
+                statusMessage = `⚠️ Your period is ${Math.abs(data.days_until_next)} days late.`;
+            } else if (data.days_until_next === 0) {
+                statusClass = 'alert-info';
+                statusMessage = '📅 Your period is expected today!';
+            } else if (data.days_until_next < 0) {
+                statusClass = 'alert-info';
+                statusMessage = `📅 Your period was expected ${Math.abs(data.days_until_next)} days ago.`;
+            } else if (data.days_until_next <= 3) {
+                statusClass = 'alert-info';
+                statusMessage = `🔔 Your period is coming soon (in ${data.days_until_next} day${data.days_until_next !== 1 ? 's' : ''})!`;
+            } else {
+                statusClass = 'alert-success';
+                statusMessage = `✅ Your next period is in ${data.days_until_next} days.`;
+            }
+            
+            let insightsHtml = '';
+            if (data.delay_insights && data.delay_insights.length > 0) {
+                insightsHtml = `
+                    <div style="margin-top: 1rem;">
+                        <h4>💡 Possible Reasons for Delay</h4>
+                        <ul class="tips-list">
+                            ${data.delay_insights.map(insight => `<li>${insight}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            predictionContent.innerHTML = `
+                <div class="alert ${statusClass}">
+                    ${statusMessage}
+                </div>
+                
+                <div style="background: var(--bg-light); padding: 1.5rem; border-radius: 8px; margin-top: 1rem;">
+                    <h3 style="margin-bottom: 1rem;">Cycle Information</h3>
+                    <p><strong>Last Period:</strong> ${formatDate(data.last_period_date)}</p>
+                    <p><strong>Cycle Length:</strong> ${data.cycle_length} days</p>
+                    <p><strong>Next Expected Period:</strong> ${formatDate(data.next_period_date)}</p>
+                    <p><strong>Days Until Next:</strong> ${data.days_until_next > 0 ? data.days_until_next : 'Overdue'}</p>
+                </div>
+                
+                ${insightsHtml}
+            `;
+        }
+        
+        // Load existing period data
+        async function loadPeriodData() {
+            try {
+                const data = await apiCall('/period');
+                
+                // Set form values
+                periodDateInput.value = data.last_period_date;
+                cycleLengthInput.value = data.cycle_length;
+                
+                // Display prediction
+                displayPrediction(data);
+                
+            } catch (error) {
+                // No period data yet
+                console.log('No period data found');
+            }
+        }
+        
+        // Load data on page load
+        loadPeriodData();
+    </script>
+</body>
+</html>

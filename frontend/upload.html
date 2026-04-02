@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Reports - CareConnect</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>🏥 CareConnect</h1>
+            <div class="nav-links">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="appointment.html">Appointments</a>
+                <a href="period.html">Period Tracker</a>
+                <a href="upload.html">Reports</a>
+                <a href="chatbot.html">Chatbot</a>
+                <div id="user-info"></div>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h2>📄 Medical Reports</h2>
+        
+        <!-- Upload Report -->
+        <div class="card">
+            <h2>Upload New Report</h2>
+            <form id="upload-form">
+                <div class="upload-area" id="upload-area">
+                    <p>📎 Click to select a file or drag and drop</p>
+                    <p class="text-muted">Supported: PDF, JPG, PNG, DOC, DOCX (Max 10MB)</p>
+                    <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                           style="display: none;">
+                </div>
+                
+                <div id="file-preview" style="display: none; margin-top: 1rem;">
+                    <p><strong>Selected file:</strong> <span id="file-name"></span></p>
+                    <button type="submit" class="btn btn-primary">Upload Report</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelUpload()">Cancel</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Reports List -->
+        <div class="card">
+            <h2>Your Reports</h2>
+            <div id="reports-list">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/utils.js"></script>
+    <script>
+        requireAuth();
+        initNavigation();
+        
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const filePreview = document.getElementById('file-preview');
+        const fileName = document.getElementById('file-name');
+        const uploadForm = document.getElementById('upload-form');
+        
+        let selectedFile = null;
+        
+        // Click to select file
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // File selected
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFileSelect(file);
+            }
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'var(--primary-color)';
+            uploadArea.style.background = 'var(--bg-light)';
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = 'var(--border-color)';
+            uploadArea.style.background = 'transparent';
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'var(--border-color)';
+            uploadArea.style.background = 'transparent';
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                handleFileSelect(file);
+            }
+        });
+        
+        // Handle file selection
+        function handleFileSelect(file) {
+            // Validate file size (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showAlert('File too large! Maximum size is 10MB', 'danger');
+                return;
+            }
+            
+            // Validate file type
+            const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+            const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedTypes.includes(fileExt)) {
+                showAlert('Invalid file type! Allowed types: PDF, JPG, PNG, DOC, DOCX', 'danger');
+                return;
+            }
+            
+            selectedFile = file;
+            fileName.textContent = file.name;
+            filePreview.style.display = 'block';
+        }
+        
+        // Cancel upload
+        function cancelUpload() {
+            selectedFile = null;
+            fileInput.value = '';
+            filePreview.style.display = 'none';
+        }
+        
+        // Upload form submit
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!selectedFile) {
+                showAlert('Please select a file', 'warning');
+                return;
+            }
+            
+            try {
+                const submitBtn = uploadForm.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Uploading...';
+                
+                // Create FormData
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                // Upload file
+                const response = await fetch(`${API_URL}/reports/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Upload failed');
+                }
+                
+                showAlert('Report uploaded successfully!', 'success');
+                cancelUpload();
+                loadReports();
+                
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload Report';
+                
+            } catch (error) {
+                showAlert('Failed to upload report: ' + error.message, 'danger');
+                const submitBtn = uploadForm.querySelector('button[type="submit"]');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload Report';
+            }
+        });
+        
+        // Load reports
+        async function loadReports() {
+            try {
+                const reports = await apiCall('/reports');
+                const reportsList = document.getElementById('reports-list');
+                
+                if (reports.length === 0) {
+                    reportsList.innerHTML = '<p class="text-muted">No reports uploaded yet</p>';
+                    return;
+                }
+                
+                reportsList.innerHTML = '<ul class="file-list">' +
+                    reports.map(report => `
+                        <li class="file-item">
+                            <div>
+                                <strong>${report.filename}</strong>
+                                <p class="text-muted">Uploaded on ${formatDate(report.upload_date)}</p>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-primary" onclick="downloadReport(${report.id}, '${report.filename}')">
+                                    📥 Download
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteReport(${report.id})">
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </li>
+                    `).join('') +
+                    '</ul>';
+                
+            } catch (error) {
+                document.getElementById('reports-list').innerHTML = 
+                    '<p class="text-muted">Error loading reports</p>';
+                console.error('Error loading reports:', error);
+            }
+        }
+        
+        // Download report
+        async function downloadReport(reportId, filename) {
+            try {
+                const response = await fetch(`${API_URL}/reports/${reportId}/download`, {
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Download failed');
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+            } catch (error) {
+                showAlert('Failed to download report: ' + error.message, 'danger');
+            }
+        }
+        
+        // Delete report
+        async function deleteReport(reportId) {
+            if (!confirm('Are you sure you want to delete this report?')) {
+                return;
+            }
+            
+            try {
+                await apiCall(`/reports/${reportId}`, {
+                    method: 'DELETE'
+                });
+                
+                showAlert('Report deleted successfully', 'success');
+                loadReports();
+                
+            } catch (error) {
+                showAlert('Failed to delete report: ' + error.message, 'danger');
+            }
+        }
+        
+        // Make functions available globally
+        window.cancelUpload = cancelUpload;
+        window.downloadReport = downloadReport;
+        window.deleteReport = deleteReport;
+        
+        // Load reports on page load
+        loadReports();
+    </script>
+</body>
+</html>
