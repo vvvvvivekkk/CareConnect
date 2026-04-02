@@ -282,7 +282,7 @@
             const token = localStorage.getItem('token');
             const url = `/api/medical-records/${id}/download`;
             // For file download with Auth header, we need to fetch and build object URL.
-            fetch(url, { headers: { 'Authorization': token } })
+            fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
                 .then(response => {
                     if (!response.ok) throw new Error("Failed to download report");
                     return response.blob();
@@ -292,7 +292,7 @@
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = 'medical_report.txt';
+                    a.download = `medical_report_${id}.pdf`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);

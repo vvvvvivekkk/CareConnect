@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, HTTPException, status, Depends, Response
+from fpdf import FPDF
 from app.models import MedicalRecordCreate, MedicalRecordResponse
 from app.auth import get_current_user_id
 from app.database import get_db
@@ -92,10 +92,19 @@ Prescription:
 Notes:
 {record['notes'] or 'N/A'}
 """
-        return PlainTextResponse(
-            content=report_content,
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        for line in report_content.split("\\n"):
+            pdf.cell(0, 10, txt=str(line).encode('latin-1', 'replace').decode('latin-1'), ln=True, align='L')
+            
+        pdf_bytes = pdf.output(dest='S').encode('latin-1')
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=medical_report_{record_id}.txt"
+                "Content-Disposition": f"attachment; filename=medical_report_{record_id}.pdf"
             }
         )
 
